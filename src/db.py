@@ -1,27 +1,24 @@
-from datetime import datetime
 import os
-from collections.abc import AsyncGenerator
 import uuid
 
+from datetime import datetime
+from collections.abc import AsyncGenerator
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped
 from fastapi_users.db import SQLAlchemyUserDatabase, SQLAlchemyBaseUserTableUUID
 from dotenv import load_dotenv
 from fastapi import Depends
+from typing import List
 
 load_dotenv()
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
 
 
 class Base(DeclarativeBase):
     pass
-
-
-class User(SQLAlchemyBaseUserTableUUID, Base):
-    post = relationship("Post", back_populates="user")
 
 
 class Post(Base):
@@ -39,14 +36,12 @@ class Post(Base):
     user = relationship("User", back_populates="post")
 
 
-class Task(Base):
-    __tablename__ = "tasks"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
-    title = Column(String, nullable=False)
-    description = Column(Text)
-    tasksList = Column(String, nullable=False)
+class User(SQLAlchemyBaseUserTableUUID, Base):
+    post: Mapped[List["Post"]] = relationship(
+        "Post",
+        back_populates="user",
+        lazy="selectin",
+    )
 
 
 engine = create_async_engine(DATABASE_URL)
